@@ -1,0 +1,30 @@
+extends layout
+
+block content
+  h2.my-3 Backblaze B2 Browser Upload Example
+
+  div
+    p.
+      Choose a file to upload and click "Upload". The response from B2 will be shown in the page.
+      The Node.js back end rendered the following <code>uploadUrl</code> into this page as a hidden form field:
+    p <code>#{uploadInfo.uploadUrl}</code>
+    p.
+      The <code>uploadUrl</code> and upload <code>authorizationToken</code> are valid for 24 hours or until the
+      endpoint rejects an upload, see <a href='https://www.backblaze.com/apidocs/b2-upload-file' target='_blank'>b2_upload_file</a>.
+      You can upload as many files to this URL as you need.
+    p.
+      Refreshing the page will cause the backend to generate a new <code>uploadUrl</code>.
+
+  form
+    .mb-3
+      input(type='file')#uploadFileInput.form-control
+    .mb-3
+      button(type='submit')#uploadFileButton.btn.btn-primary Upload
+    input(type='hidden', value=uploadInfo.uploadUrl)#uploadUrl
+    input(type='hidden', value=uploadInfo.authorizationToken)#authorizationToken
+
+  p#resultMessage
+
+  pre#response
+
+  script(src='/javascripts/index.js')
