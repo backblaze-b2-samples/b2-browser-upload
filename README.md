@@ -18,13 +18,13 @@ The example has two components:
 Create a bucket and use the B2 CLI to apply custom CORS rules. The contents of the `b2CorsRules.json` file in this repo can be used as an example. The policy allows downloads and uploads from any origin. If you're using bash, or a similar shell, you can use [command substitution](https://www.gnu.org/software/bash/manual/html_node/Command-Substitution.html) (`$(...)`) to reference the JSON file with the CORS policy: 
 
 ```bash
-b2 update-bucket --corsRules "$(cat b2CorsRules.json)" yourBucketName
+b2 update-bucket --cors-rules "$(cat b2CorsRules.json)" yourBucketName
 ```
 
 You should see your CORS policy in the output from the `b2` command:
 
 ```console
-% b2 update-bucket --corsRules "$(cat b2CorsRules.json)" metadaddy-public
+% b2 update-bucket --cors-rules "$(cat b2CorsRules.json)" metadaddy-public
 {
     "accountId": "15f935cf4dcb",
     "bucketId": "f1f51fb913357c4f74ed0c1b",
