@@ -103,5 +103,4 @@ Run the app with `DEBUG=b2-browser-upload:* npm start`.
 
 Choose file and upload:
 
-![upload screenshot](https://github.com/backblaze-b2-samples/b2-browser-upload/assets/723517/1c63fe79-64aa-4f99-8a71-dde266e203e2)
-
+![upload screenshot](https://github.com/user-attachments/assets/c5fde727-af80-43b2-9c38-0bd9034b60d3)
