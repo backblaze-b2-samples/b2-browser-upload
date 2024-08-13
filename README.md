@@ -1,16 +1,26 @@
 # B2 Browser Upload 
 
-This example demonstrates using the `b2_upload_file` Backblaze B2 Cloud Storage API from a web browser to upload a file directly from a web browser to the B2 bucket, without the file contents having to go through a web server you control.
+This example demonstrates two mechanisms that a web browser can use to upload a file directly from a web browser to the B2 bucket, without the file contents having to go through a web server you control:
+* Using an S3 presigned URL and the PutObject operation
+* Using the `b2_upload_file` Backblaze B2 Native API operation
 
-This is similar to using techniques with other cloud storage providers such as AWS's [presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/dev/PresignedUrlUploadObject.html) and GCP's [signed URLs](https://cloud.google.com/storage/docs/access-control/signed-urls), and was inspired by and borrows from [Matt Welke](https://github.com/mattwelke)'s [upload-file-to-backblaze-b2-from-browser-example](https://github.com/mattwelke/upload-file-to-backblaze-b2-from-browser-example). Many thanks to Matt for writing and publishing that code! 
+The `b2_upload_file` example was inspired by and borrows from [Matt Welke](https://github.com/mattwelke)'s [upload-file-to-backblaze-b2-from-browser-example](https://github.com/mattwelke/upload-file-to-backblaze-b2-from-browser-example). Many thanks to Matt for writing and publishing that code! 
 
-In this example, a Node.js back end app renders the upload URL and authorization token into the web page containing the file upload element. JavaScript on the front end uses the `fetch()` API to POST the file directly to Backblaze B2.  
+Both examples use a Node.js back end app that is configured with a Backblaze B2 application key and its ID.
+
+## Uploading via an S3 Presigned URL
+
+Since the presigned URL includes the object key (filename), after the user clicks the upload button, the front end JavaScript code uses the `fetch()` API to retrieve a presigned URL from the back end, passing the filename as a query parameter. The front end then uses `fetch()` to PUT the file directly to Backblaze B2 via its S3-compatible API's PutObject operation.
+
+## Uploading via the B2 `b2_upload_file` Operation
+ 
+In this example, the back end renders the upload URL and authorization token into the web page containing the file upload element. JavaScript on the front end uses the `fetch()` API to POST the file directly to Backblaze B2.  
 
 # Components
 
 The example has two components:
 
-1. An Express back end to call the b2_get_upload_url and render the resulting upload URL and authorization token into the web page as hidden form fields without exposing the B2 application key to the browser.
+1. An Express back end. For S3, the back end creates a presigned URL, signed using the B2 application key. For B2, the back end calls `b2_get_upload_url` and renders the resulting upload URL and authorization token into the web page as hidden form fields. In neither case is the B2 application key exposed to the browser.
 2. A front end JS app to retrieve the rendered values to upload a selected file from the browser. Uses [SubtleCrypto](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto) to perform SHA1 hashing.
 
 # Preparing Backblaze B2 bucket
@@ -43,7 +53,9 @@ You should see your CORS policy in the output from the `b2` command:
                 "b2_download_file_by_id",
                 "b2_upload_part",
                 "b2_upload_file",
-                "b2_download_file_by_name"
+                "s3_put",
+                "b2_download_file_by_name",
+                "s3_get"
             ],
             "allowedOrigins": [
                 "*"
@@ -83,6 +95,9 @@ Set the following environment variables:
 * B2_APPLICATION_KEY_ID - Your B2 application key id
 * B2_APPLICATION_KEY - Your B2 application key
 * B2_BUCKET_ID - The ID of the B2 bucket you're uploading files into.
+* B2_BUCKET_NAME - The name of the B2 bucket you're uploading files into.
+* AWS_ENDPOINT_URL - The bucket endpoint, prepended with `https://`, for example, `https://s3.us-west-004.backblazeb2.com`
+* AWS_REGION - The region segment of the bucket endpoint, for example. `us-west-004`
 
 Run the app with `DEBUG=b2-browser-upload:* npm start`.
 

@@ -14,7 +14,9 @@
             "b2_download_file_by_id",
             "b2_download_file_by_name",
             "b2_upload_file",
-            "b2_upload_part"
+            "b2_upload_part",
+            "s3_get",
+            "s3_put"
         ],
         "maxAgeSeconds": 3600
     }

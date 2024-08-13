@@ -1,9 +1,9 @@
 import fetch from 'node-fetch';
 import config from '../config.js';
 import Debug from 'debug';
-const debug = Debug('b2-browser-upload:getUploadInfo');
+const debug = Debug('b2-browser-upload:getB2UploadInfo');
 
-async function getUploadInfo() {
+async function getB2UploadInfo() {
     const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
         headers: {
             'Authorization': 'Basic ' + Buffer.from(config.b2ApplicationKeyId + ":" + config.b2ApplicationKey).toString('base64')
@@ -27,4 +27,4 @@ async function getUploadInfo() {
     return uploadInfo;
 }
 
-export default getUploadInfo;
+export default getB2UploadInfo;

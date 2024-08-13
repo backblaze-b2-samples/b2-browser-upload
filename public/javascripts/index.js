@@ -1,5 +1,5 @@
-// When the user clicks the upload button...
-document.getElementById("uploadFileButton").addEventListener("click", async (event) => {
+// When the user clicks the B2 upload button...
+document.getElementById("b2UploadFileButton").addEventListener("click", async (event) => {
   // Don't submit the form!
   event.preventDefault();
 
@@ -63,9 +63,77 @@ document.getElementById("uploadFileButton").addEventListener("click", async (eve
   document.getElementById("response").innerHTML = detail;
 });
 
+
+// When the user clicks the S3 upload button...
+document.getElementById("s3UploadFileButton").addEventListener("click", async (event) => {
+  // Don't submit the form!
+  event.preventDefault();
+
+  // Get the selected file
+  const file = document.getElementById("uploadFileInput").files[0];
+
+  // Tell B2 to set the content type automatically depending on the file extension
+  const contentType = "b2/x-auto"
+
+  let msg, detail;
+
+  try {
+    // Ask the backend for a presigned URL
+    let response = await fetch('/presigned-url?' + new URLSearchParams({
+      key: file.name,
+    }).toString())
+
+    // Report on the outcome
+    if (!response.ok) {
+      msg = `${response.status} when retrieving presigned URL from backend`;
+      console.error(msg)
+      detail = await response.text();
+    } else {
+      const { presignedUrl } = await response.json();
+
+      document.getElementById('presignedUrl').innerHTML = presignedUrl;
+      console.log(`Presigned URL: ${presignedUrl}`);
+
+      // Get the file's contents as an ArrayBuffer
+      const fileContent = await file.arrayBuffer();
+
+      // Upload the file content with the filename, hash and auth token
+      response = await fetch(presignedUrl,{
+        method: "PUT",
+        mode: "cors",
+        body: fileContent,
+        headers: {
+          "Content-Type": contentType,
+        },
+      });
+
+      // Report on the outcome
+      if (response.status >= 200 && response.status < 300) {
+        msg = `${response.status} response from S3 API. Success!`;
+      } else if (response.status >= 400) {
+        msg = `${response.status} error from S3 API.`;
+      } else {
+        msg = `Unknown error.`;
+      }
+
+      detail = '[S3 PutObject does not return any content]';
+    }
+  } catch (error) {
+    console.error("Fetch threw an error:", error)
+    msg = `Fetch threw "${error}" - see the console and/or network tab for more details`
+    detail = error.stack;
+  }
+
+  console.log(`Upload file result: ${msg}`);
+  console.log(`Response detail: ${detail}`);
+  document.getElementById("resultMessage").innerHTML = msg;
+  document.getElementById("response").innerHTML = detail;
+});
+
 // When selected file changes...
 document.getElementById("uploadFileInput").addEventListener("change", async () => {
-  // Clear the result, response
+  // Clear the result, response, etc
   document.getElementById("resultMessage").innerHTML ="";
   document.getElementById("response").innerHTML = "";
+  document.getElementById('presignedUrl').innerHTML = "";
 });

@@ -5,7 +5,15 @@ block content
 
   div
     p.
-      Choose a file to upload and click "Upload". The response from B2 will be shown in the page.
+      Choose a file to upload and click one of the upload buttons. The response from B2 will be shown in the page.
+    h3.my-1 Backblaze S3-Compatible API Upload
+    p.
+      Since S3 presigned URLs include the object key (filename), when you click the "Upload via S3 API",
+      the front end code GETs a presigned URL from the back end, passing the filename as a query parameter.
+    p
+      code#presignedUrl
+    h3.my-1 Backblaze B2 Native API Upload
+    p.
       The Node.js back end rendered the following <code>uploadUrl</code> into this page as a hidden form field:
     p <code>#{uploadInfo.uploadUrl}</code>
     p.
@@ -19,7 +27,8 @@ block content
     .mb-3
       input(type='file')#uploadFileInput.form-control
     .mb-3
-      button(type='submit')#uploadFileButton.btn.btn-primary Upload
+      button(type='submit')#s3UploadFileButton.btn.btn-secondary.me-1 Upload via S3 API
+      button(type='submit')#b2UploadFileButton.btn.btn-secondary.me-1 Upload via B2 API
     input(type='hidden', value=uploadInfo.uploadUrl)#uploadUrl
     input(type='hidden', value=uploadInfo.authorizationToken)#authorizationToken
 
