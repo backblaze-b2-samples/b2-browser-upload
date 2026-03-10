@@ -10,6 +10,18 @@ Both examples use a Node.js back end app that is configured with a Backblaze B2 
 
 > Note: for both mechanisms, the maximum file size that may be uploaded is 5 GB. You must split larger files into parts between 5 MB and 5 GB in size and use either the [S3 Multipart operations](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html) or the [B2 Native API equivalents](https://www.backblaze.com/docs/cloud-storage-create-large-files-with-the-native-api).
 
+---
+
+## Related Project: Vibe Coding Starter Kit
+
+If you are looking for a production-ready, full-stack example that implements browser uploads to Backblaze B2 (including direct-to-B2 uploads, dashboard UI, and backend integration), see:
+
+[Vibe Coding Starter Kit](https://github.com/backblaze-b2-samples/vibe-coding-starter-kit)
+
+This starter kit includes a pre-built Next.js + FastAPI application with file uploads, file browser, and Backblaze B2 already integrated — optimized for AI coding agents and rapid app development.
+
+---
+
 ## Uploading via an S3 Presigned URL
 
 Since the presigned URL includes the object key (filename), after the user clicks the upload button, the front end JavaScript code uses the `fetch()` API to retrieve a presigned URL from the back end, passing the filename as a query parameter. The front end then uses `fetch()` to PUT the file directly to Backblaze B2 via the S3-compatible API's PutObject operation.
