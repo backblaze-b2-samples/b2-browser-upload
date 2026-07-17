@@ -59,7 +59,12 @@ function getScopedObjectKey(userId, key) {
 }
 
 function parseContentLength(value) {
-  const contentLength = Number(value);
+  const rawContentLength = value.trim();
+  if (!rawContentLength) {
+    throw new Error('contentLength is required');
+  }
+
+  const contentLength = Number(rawContentLength);
   if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
     throw new Error('contentLength must be a non-negative integer');
   }
@@ -99,6 +104,9 @@ router.get('/presigned-url', setNoStoreHeaders, uploadRateLimiter, async functio
   try {
     if (!key) {
       throw new Error('key is required');
+    }
+    if (!contentType) {
+      throw new Error('contentType is required');
     }
     if (!allowedContentTypes.includes(contentType)) {
       throw new Error('contentType is not allowed');

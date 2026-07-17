@@ -171,6 +171,22 @@ test('presigned-url endpoint enforces auth, key scope, limits, and safe logs', a
             assert.equal(body.error, 'key is required');
         });
 
+        await t.test('rejects missing content metadata', async () => {
+            const missingType = await getUploadInfo(baseUrl, {
+                key: 'photo.png',
+                contentLength: '1024',
+            });
+            const missingLength = await getUploadInfo(baseUrl, {
+                key: 'photo.png',
+                contentType: 'image/png',
+            });
+
+            assert.equal(missingType.response.status, 400);
+            assert.equal(missingType.body.error, 'contentType is required');
+            assert.equal(missingLength.response.status, 400);
+            assert.equal(missingLength.body.error, 'contentLength is required');
+        });
+
         await t.test('rejects malicious keys', async () => {
             const invalidKeys = [
                 '../index.html',
