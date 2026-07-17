@@ -9,7 +9,8 @@ block content
     h3.my-1 Backblaze S3-Compatible API Upload
     p.
       Since S3 presigned URLs include the object key (filename), when you click "Upload",
-      the front end code GETs a presigned URL from the back end, passing the filename as a query parameter.
+      the front end code GETs a presigned URL from the back end, passing the filename, content type,
+      content length, and an upload token in the Authorization header.
     p Presigned URL:
     p
       code#presignedUrl
