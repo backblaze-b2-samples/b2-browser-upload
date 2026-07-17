@@ -32,6 +32,7 @@ async function getS3UploadInfo({ objectKey, contentType, contentLength }) {
         Bucket: config.b2BucketName,
         Key: objectKey,
         ContentType: contentType,
+        ContentLength: contentLength,
     };
     const putObjectCommand = new PutObjectCommand(putObjectParams);
     const presignedUrl = await getSignedUrl(client, putObjectCommand, {

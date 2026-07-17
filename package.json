@@ -2,6 +2,9 @@
   "name": "b2-browser-upload",
   "version": "0.0.1",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node ./bin/www.js",
     "test": "node --test"

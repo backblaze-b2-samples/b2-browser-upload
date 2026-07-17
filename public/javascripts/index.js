@@ -1,5 +1,5 @@
-// When the user clicks the S3 upload button...
-document.getElementById("s3UploadFileButton").addEventListener("click", async (event) => {
+// When the user submits the upload form...
+document.getElementById("uploadForm").addEventListener("submit", async (event) => {
   // Don't submit the form!
   event.preventDefault();
 
