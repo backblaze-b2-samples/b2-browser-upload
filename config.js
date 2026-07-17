@@ -1,8 +1,10 @@
+const b2Region = process.env['B2_REGION'];
+
 export default {
     b2ApplicationKeyId: process.env['B2_APPLICATION_KEY_ID'],
     b2ApplicationKey: process.env['B2_APPLICATION_KEY'],
-    b2BucketId: process.env['B2_BUCKET_ID'],
     b2BucketName: process.env['B2_BUCKET_NAME'],
-    s3EndpointUrl: process.env['AWS_ENDPOINT_URL'],
-    s3Region: process.env['AWS_REGION'],
+    b2PublicUrlBase: process.env['B2_PUBLIC_URL_BASE'],
+    b2Region,
+    s3EndpointUrl: b2Region ? `https://s3.${b2Region}.backblazeb2.com` : undefined,
 };
