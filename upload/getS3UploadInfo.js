@@ -1,22 +1,20 @@
-import { createRequire } from 'node:module';
 import config, { presignedUrlExpiresSeconds } from '../config.js';
 import Debug from 'debug';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-const require = createRequire(import.meta.url);
-const pkg = require('../package.json');
 const debug = Debug('b2-browser-upload:getS3UploadInfo');
-
-const client = new S3Client({
+export const s3ClientConfig = {
     endpoint: config.s3EndpointUrl,
     region: config.b2Region,
-    customUserAgent: `${pkg.name}/${pkg.version} (backblaze-b2-samples)`,
+    customUserAgent: 'b2ai-b2-browser-upload',
     credentials: {
         accessKeyId: config.b2ApplicationKeyId,
         secretAccessKey: config.b2ApplicationKey,
     },
-});
+};
+
+const client = new S3Client(s3ClientConfig);
 
 function getPublicUrl(key) {
     const encodedKey = key

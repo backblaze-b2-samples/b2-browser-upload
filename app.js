@@ -11,12 +11,17 @@ const app = express();
 // view engine setup
 app.set('views', 'views');
 app.set('view engine', 'pug');
+app.set('trust proxy', 1);
 
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static('public'));
+app.use(express.static('public', {
+  setHeaders(res) {
+    res.set('Cache-Control', 'no-store');
+  },
+}));
 
 app.use('/', indexRouter);
 

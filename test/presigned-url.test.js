@@ -7,9 +7,10 @@ import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..');
-const uploadToken = 'test-upload-token';
+const uploadToken = 'test-upload-token-32-characters-long';
 const uploadUserId = 'sample-user';
 const publicUrlBase = 'https://bucket.example.test';
+let requestIpCounter = 1;
 
 process.env.DEBUG = 'b2-browser-upload:getS3UploadInfo';
 process.env.B2_APPLICATION_KEY_ID = 'test_key_id';
@@ -21,6 +22,13 @@ process.env.UPLOAD_AUTH_TOKEN = uploadToken;
 process.env.UPLOAD_USER_ID = uploadUserId;
 
 const { default: app } = await import('../app.js');
+const { s3ClientConfig } = await import('../upload/getS3UploadInfo.js');
+
+function nextClientIp() {
+    const ip = `203.0.113.${requestIpCounter}`;
+    requestIpCounter += 1;
+    return ip;
+}
 
 function listen() {
     const server = http.createServer(app);
@@ -48,8 +56,11 @@ function close(server) {
     });
 }
 
-async function getUploadInfo(baseUrl, params, token = uploadToken) {
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+async function getUploadInfo(baseUrl, params, token = uploadToken, clientIp = nextClientIp()) {
+    const headers = { 'X-Forwarded-For': clientIp };
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
     const response = await fetch(`${baseUrl}/presigned-url?${new URLSearchParams(params)}`, { headers });
     const text = await response.text();
     const body = text ? JSON.parse(text) : {};
@@ -65,6 +76,10 @@ function validParams(overrides = {}) {
         ...overrides,
     };
 }
+
+test('S3 client uses required Backblaze sample user agent', () => {
+    assert.equal(s3ClientConfig.customUserAgent, 'b2ai-b2-browser-upload');
+});
 
 test('config validation fails fast before serving traffic', () => {
     const baseEnv = {
@@ -90,11 +105,18 @@ test('config validation fails fast before serving traffic', () => {
         ['--input-type=module', '-e', "import('./config.js')"],
         { cwd: repoRoot, env: { ...baseEnv, UPLOAD_USER_ID: '../bad' }, encoding: 'utf8' },
     );
+    const shortUploadToken = spawnSync(
+        process.execPath,
+        ['--input-type=module', '-e', "import('./config.js')"],
+        { cwd: repoRoot, env: { ...baseEnv, UPLOAD_AUTH_TOKEN: 'short-token' }, encoding: 'utf8' },
+    );
 
     assert.notEqual(missingRegion.status, 0);
     assert.match(missingRegion.stderr, /Missing required env vars: B2_REGION/);
     assert.notEqual(invalidUserId.status, 0);
     assert.match(invalidUserId.stderr, /UPLOAD_USER_ID must contain only/);
+    assert.notEqual(shortUploadToken.status, 0);
+    assert.match(shortUploadToken.stderr, /UPLOAD_AUTH_TOKEN must be at least 32 characters/);
 });
 
 test('presigned-url endpoint enforces auth, key scope, limits, and safe logs', async (t) => {
@@ -113,6 +135,16 @@ test('presigned-url endpoint enforces auth, key scope, limits, and safe logs', a
     };
 
     try {
+        await t.test('serves client contract assets without caching', async () => {
+            const page = await fetch(`${baseUrl}/`);
+            const script = await fetch(`${baseUrl}/javascripts/index.js`);
+
+            assert.equal(page.status, 200);
+            assert.equal(script.status, 200);
+            assert.equal(page.headers.get('cache-control'), 'no-store');
+            assert.equal(script.headers.get('cache-control'), 'no-store');
+        });
+
         await t.test('rejects unauthenticated requests', async () => {
             const { response, body } = await getUploadInfo(baseUrl, validParams(), null);
 
@@ -192,17 +224,60 @@ test('presigned-url endpoint enforces auth, key scope, limits, and safe logs', a
             assert.doesNotMatch(debugOutput, /X-Amz-Signature|X-Amz-Credential/);
         });
 
-        await t.test('rate limits upload URL minting', async () => {
+        await t.test('allows zero-byte uploads', async () => {
+            const { response, body } = await getUploadInfo(baseUrl, validParams({
+                key: 'empty.txt',
+                contentType: 'text/plain',
+                contentLength: '0',
+            }));
+
+            assert.equal(response.status, 200);
+            assert.match(
+                body.objectKey,
+                /^users\/sample-user\/[0-9a-f-]{36}\/empty\.txt$/,
+            );
+        });
+
+        await t.test('rate limits upload URL minting per client IP', async () => {
+            const limitedIp = '198.51.100.10';
             const statuses = [];
-            for (let index = 0; index < 5; index += 1) {
+            for (let index = 0; index < 6; index += 1) {
                 const { response } = await getUploadInfo(
                     baseUrl,
                     validParams({ key: `rate-limit-${index}.png` }),
+                    uploadToken,
+                    limitedIp,
+                );
+                statuses.push(response.status);
+            }
+            const otherClient = await getUploadInfo(
+                baseUrl,
+                validParams({ key: 'other-client.png' }),
+                uploadToken,
+                '198.51.100.11',
+            );
+
+            assert.deepEqual(statuses, [200, 200, 200, 200, 200, 429]);
+            assert.equal(otherClient.response.status, 200);
+        });
+
+        await t.test('rate limits failed authentication attempts', async () => {
+            const statuses = [];
+            for (let index = 0; index < 6; index += 1) {
+                const { response } = await getUploadInfo(
+                    baseUrl,
+                    validParams({ key: `bad-token-${index}.png` }),
+                    'wrong-token',
+                    '198.51.100.12',
                 );
                 statuses.push(response.status);
             }
 
-            assert.deepEqual(statuses, [200, 200, 200, 200, 429]);
+            assert.deepEqual(statuses, [401, 401, 401, 401, 401, 429]);
+        });
+
+        await t.test('does not log express-rate-limit trust proxy validation errors', () => {
+            assert.doesNotMatch(debugOutput, /ValidationError|ERR_ERL_/);
         });
     } finally {
         process.stderr.write = originalStderrWrite;

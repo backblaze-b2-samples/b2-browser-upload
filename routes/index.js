@@ -8,6 +8,7 @@ const router = express.Router();
 const uploadRateLimitWindowMs = 60 * 1000;
 const uploadRateLimitMax = 5;
 const maxKeyBytes = 512;
+// Keep caller-supplied keys out of app/system namespaces and out of the server-generated users/<id>/ scope.
 const reservedKeyPrefixes = new Set(['assets', 'public', 'system', 'users']);
 const uploadAuthTokenDigest = createHash('sha256').update(config.uploadAuthToken).digest();
 const uploadRateLimiter = rateLimit({
@@ -15,7 +16,6 @@ const uploadRateLimiter = rateLimit({
   limit: uploadRateLimitMax,
   standardHeaders: true,
   legacyHeaders: false,
-  skipFailedRequests: true,
   message: { error: 'too many upload URLs requested' },
 });
 
@@ -60,8 +60,8 @@ function getScopedObjectKey(userId, key) {
 
 function parseContentLength(value) {
   const contentLength = Number(value);
-  if (!Number.isSafeInteger(contentLength) || contentLength <= 0) {
-    throw new Error('contentLength must be a positive integer');
+  if (!Number.isSafeInteger(contentLength) || contentLength < 0) {
+    throw new Error('contentLength must be a non-negative integer');
   }
   if (contentLength > maxUploadBytes) {
     throw new Error(`contentLength must be ${maxUploadBytes} bytes or less`);
@@ -77,12 +77,13 @@ function setNoStoreHeaders(req, res, next) {
 }
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
+router.get('/', setNoStoreHeaders, function(req, res, next) {
   res.render('index');
 });
 
 /* GET presigned url */
 router.get('/presigned-url', setNoStoreHeaders, uploadRateLimiter, async function(req, res, next) {
+  const requestId = randomUUID();
   const user = authenticateUploadRequest(req);
   if (!user) {
     res.status(401).json({ error: 'authorization is required' });
@@ -118,7 +119,13 @@ router.get('/presigned-url', setNoStoreHeaders, uploadRateLimiter, async functio
       allowedContentTypes,
     });
   } catch (error) {
-    console.error('Failed to create presigned upload URL:', error);
+    console.error('Failed to create presigned upload URL:', {
+      requestId,
+      userId: user.id,
+      objectKey,
+      contentType,
+      error,
+    });
     res.status(500).json({ error: 'failed to create upload URL' });
   }
 });
