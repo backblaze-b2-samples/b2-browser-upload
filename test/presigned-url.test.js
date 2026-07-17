@@ -172,7 +172,7 @@ test('presigned-url endpoint enforces auth, key scope, limits, and safe logs', a
             assert.ok(body.presignedUrl.includes('X-Amz-Signature='));
             assert.equal(
                 new URL(body.presignedUrl).searchParams.get('X-Amz-SignedHeaders'),
-                'content-length;host',
+                'content-length;content-type;host',
             );
             assert.equal(
                 body.publicUrl,

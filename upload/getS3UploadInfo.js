@@ -37,6 +37,7 @@ async function getS3UploadInfo({ objectKey, contentType, contentLength }) {
     const putObjectCommand = new PutObjectCommand(putObjectParams);
     const presignedUrl = await getSignedUrl(client, putObjectCommand, {
         expiresIn: presignedUrlExpiresSeconds,
+        signableHeaders: new Set(['content-length', 'content-type']),
     });
 
     debug(
