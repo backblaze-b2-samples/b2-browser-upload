@@ -1,20 +1,14 @@
 [
     {
-        "corsRuleName": "downloadFromAnyOriginWithUpload",
+        "corsRuleName": "browserUploadFromExampleOrigin",
         "allowedOrigins": [
-            "*"
+            "http://localhost:3000",
+            "http://127.0.0.1:3000"
         ],
         "allowedHeaders": [
-            "authorization",
-            "content-type",
-            "x-bz-file-name",
-            "x-bz-content-sha1"
+            "content-type"
         ],
         "allowedOperations": [
-            "b2_download_file_by_id",
-            "b2_download_file_by_name",
-            "b2_upload_file",
-            "b2_upload_part",
             "s3_get",
             "s3_put"
         ],

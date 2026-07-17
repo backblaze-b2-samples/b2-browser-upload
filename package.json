@@ -2,8 +2,12 @@
   "name": "b2-browser-upload",
   "version": "0.0.1",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "start": "node ./bin/www.js"
+    "start": "node ./bin/www.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.629.0",
@@ -12,9 +16,9 @@
     "debug": "~2.6.9",
     "dotenv": "^16.3.1",
     "express": "~4.16.1",
+    "express-rate-limit": "7.5.1",
     "http-errors": "~1.6.3",
     "morgan": "~1.9.1",
-    "node-fetch": "^3.3.2",
     "pug": "2.0.0-beta11"
   }
 }
