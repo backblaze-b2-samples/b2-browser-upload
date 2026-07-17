@@ -7,7 +7,6 @@ const router = express.Router();
 const uploadRateLimitWindowMs = 60 * 1000;
 const uploadRateLimitMax = 5;
 const uploadRateLimitBuckets = new Map();
-const principalPattern = /^[A-Za-z0-9_-]{1,64}$/;
 const maxKeyBytes = 512;
 const reservedKeyPrefixes = new Set(['assets', 'public', 'system', 'users']);
 const uploadAuthTokenDigest = createHash('sha256').update(config.uploadAuthToken).digest();
@@ -48,10 +47,6 @@ function sanitizeKey(key) {
 }
 
 function getScopedObjectKey(userId, key) {
-  if (!principalPattern.test(userId)) {
-    throw new Error('configured upload user id is invalid');
-  }
-
   return `users/${userId}/${randomUUID()}/${sanitizeKey(key)}`;
 }
 

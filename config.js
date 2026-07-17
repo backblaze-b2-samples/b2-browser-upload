@@ -14,6 +14,11 @@ if (missingEnvVars.length > 0) {
 }
 
 const b2Region = process.env['B2_REGION'];
+const uploadUserId = process.env['UPLOAD_USER_ID'];
+const uploadUserIdPattern = /^[A-Za-z0-9_-]{1,64}$/;
+if (!uploadUserIdPattern.test(uploadUserId)) {
+    throw new Error('UPLOAD_USER_ID must contain only letters, numbers, underscores, or hyphens and be 64 characters or less');
+}
 
 export const allowedContentTypes = Object.freeze([
     'application/pdf',
@@ -34,5 +39,5 @@ export default {
     b2Region,
     s3EndpointUrl: `https://s3.${b2Region}.backblazeb2.com`,
     uploadAuthToken: process.env['UPLOAD_AUTH_TOKEN'],
-    uploadUserId: process.env['UPLOAD_USER_ID'],
+    uploadUserId,
 };

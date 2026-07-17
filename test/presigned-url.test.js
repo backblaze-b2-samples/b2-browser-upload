@@ -67,25 +67,34 @@ function validParams(overrides = {}) {
 }
 
 test('config validation fails fast before serving traffic', () => {
-    const env = {
+    const baseEnv = {
         ...process.env,
         B2_APPLICATION_KEY_ID: 'test_key_id',
         B2_APPLICATION_KEY: 'test_application_key',
         B2_BUCKET_NAME: 'test-bucket',
+        B2_REGION: 'test-region',
         B2_PUBLIC_URL_BASE: publicUrlBase,
         UPLOAD_AUTH_TOKEN: uploadToken,
         UPLOAD_USER_ID: uploadUserId,
     };
-    delete env.B2_REGION;
 
-    const result = spawnSync(
+    const missingRegionEnv = { ...baseEnv };
+    delete missingRegionEnv.B2_REGION;
+    const missingRegion = spawnSync(
         process.execPath,
         ['--input-type=module', '-e', "import('./config.js')"],
-        { cwd: repoRoot, env, encoding: 'utf8' },
+        { cwd: repoRoot, env: missingRegionEnv, encoding: 'utf8' },
+    );
+    const invalidUserId = spawnSync(
+        process.execPath,
+        ['--input-type=module', '-e', "import('./config.js')"],
+        { cwd: repoRoot, env: { ...baseEnv, UPLOAD_USER_ID: '../bad' }, encoding: 'utf8' },
     );
 
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Missing required env vars: B2_REGION/);
+    assert.notEqual(missingRegion.status, 0);
+    assert.match(missingRegion.stderr, /Missing required env vars: B2_REGION/);
+    assert.notEqual(invalidUserId.status, 0);
+    assert.match(invalidUserId.stderr, /UPLOAD_USER_ID must contain only/);
 });
 
 test('presigned-url endpoint enforces auth, key scope, limits, and safe logs', async (t) => {
