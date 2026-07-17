@@ -1,7 +1,79 @@
 import express from 'express';
-import getS3PresignedUrl from "../upload/getS3PresignedUrl.js";
+import { randomUUID } from 'node:crypto';
+import config, { allowedContentTypes, maxUploadBytes } from '../config.js';
+import getS3UploadInfo from '../upload/getS3UploadInfo.js';
 
 const router = express.Router();
+const uploadRateLimitWindowMs = 60 * 1000;
+const uploadRateLimitMax = 5;
+const uploadRateLimitBuckets = new Map();
+const principalPattern = /^[A-Za-z0-9_-]{1,64}$/;
+const maxKeyBytes = 512;
+const reservedKeyPrefixes = new Set(['assets', 'public', 'system', 'users']);
+
+function authenticateUploadRequest(req) {
+  const header = req.get('authorization') || '';
+  const match = header.match(/^Bearer\s+(.+)$/);
+  if (!match || match[1] !== config.uploadAuthToken) {
+    return null;
+  }
+
+  return { id: config.uploadUserId };
+}
+
+function sanitizeKey(key) {
+  if (Buffer.byteLength(key, 'utf8') > maxKeyBytes) {
+    throw new Error('key is too long');
+  }
+  if (key.startsWith('/') || key.includes('\\') || /[\u0000-\u001F\u007F]/u.test(key)) {
+    throw new Error('key contains invalid characters');
+  }
+
+  const segments = key.split('/');
+  if (segments.some((segment) => !segment || segment === '.' || segment === '..')) {
+    throw new Error('key contains invalid path segments');
+  }
+  if (reservedKeyPrefixes.has(segments[0])) {
+    throw new Error('key uses a reserved prefix');
+  }
+
+  return segments.join('/');
+}
+
+function getScopedObjectKey(userId, key) {
+  if (!principalPattern.test(userId)) {
+    throw new Error('configured upload user id is invalid');
+  }
+
+  return `users/${userId}/${randomUUID()}/${sanitizeKey(key)}`;
+}
+
+function parseContentLength(value) {
+  const contentLength = Number(value);
+  if (!Number.isSafeInteger(contentLength) || contentLength <= 0) {
+    throw new Error('contentLength must be a positive integer');
+  }
+  if (contentLength > maxUploadBytes) {
+    throw new Error(`contentLength must be ${maxUploadBytes} bytes or less`);
+  }
+
+  return contentLength;
+}
+
+function applyUploadRateLimit(userId) {
+  const now = Date.now();
+  const cutoff = now - uploadRateLimitWindowMs;
+  const timestamps = (uploadRateLimitBuckets.get(userId) || []).filter((timestamp) => timestamp > cutoff);
+
+  if (timestamps.length >= uploadRateLimitMax) {
+    uploadRateLimitBuckets.set(userId, timestamps);
+    return false;
+  }
+
+  timestamps.push(now);
+  uploadRateLimitBuckets.set(userId, timestamps);
+  return true;
+}
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -10,17 +82,48 @@ router.get('/', function(req, res, next) {
 
 /* GET presigned url */
 router.get('/presigned-url', async function(req, res, next) {
-  const key = typeof req.query.key === 'string' ? req.query.key : '';
-  if (!key) {
-    res.status(400).json({ error: 'key is required' });
+  const user = authenticateUploadRequest(req);
+  if (!user) {
+    res.status(401).json({ error: 'authorization is required' });
     return;
   }
 
-  // Return a presigned URL for the given Key
-  const uploadInfo = await getS3PresignedUrl(key);
+  const key = typeof req.query.key === 'string' ? req.query.key : '';
+  const contentType = typeof req.query.contentType === 'string' ? req.query.contentType : '';
+  const contentLengthValue = typeof req.query.contentLength === 'string' ? req.query.contentLength : '';
 
-  res.setHeader('Content-Type', 'application/json');
-  res.json(uploadInfo);
+  let objectKey;
+  let contentLength;
+  try {
+    if (!key) {
+      throw new Error('key is required');
+    }
+    if (!allowedContentTypes.includes(contentType)) {
+      throw new Error('contentType is not allowed');
+    }
+
+    contentLength = parseContentLength(contentLengthValue);
+    objectKey = getScopedObjectKey(user.id, key);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+    return;
+  }
+
+  if (!applyUploadRateLimit(user.id)) {
+    res.status(429).json({ error: 'too many upload URLs requested' });
+    return;
+  }
+
+  try {
+    const uploadInfo = await getS3UploadInfo({ objectKey, contentType, contentLength });
+    res.json({
+      ...uploadInfo,
+      maxUploadBytes,
+      allowedContentTypes,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default router;

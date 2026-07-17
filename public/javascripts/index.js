@@ -5,17 +5,35 @@ document.getElementById("s3UploadFileButton").addEventListener("click", async (e
 
   // Get the selected file
   const file = document.getElementById("uploadFileInput").files[0];
+  const uploadToken = document.getElementById("uploadTokenInput").value.trim();
 
-  // Tell B2 to set the content type automatically depending on the file extension
-  const contentType = "b2/x-auto"
+  if (!file) {
+    document.getElementById("resultMessage").textContent = "Choose a file before uploading.";
+    return;
+  }
+  if (!uploadToken) {
+    document.getElementById("resultMessage").textContent = "Enter an upload token before uploading.";
+    return;
+  }
+  if (!file.type) {
+    document.getElementById("resultMessage").textContent = "Selected file has no content type.";
+    return;
+  }
 
   let msg, detail;
+  document.getElementById('publicUrl').textContent = "";
 
   try {
     // Ask the backend for a presigned URL
     let response = await fetch('/presigned-url?' + new URLSearchParams({
       key: file.name,
-    }).toString())
+      contentType: file.type,
+      contentLength: String(file.size),
+    }).toString(), {
+      headers: {
+        "Authorization": `Bearer ${uploadToken}`,
+      },
+    })
 
     // Report on the outcome
     if (!response.ok) {
@@ -26,9 +44,6 @@ document.getElementById("s3UploadFileButton").addEventListener("click", async (e
       const { presignedUrl, publicUrl } = await response.json();
 
       document.getElementById('presignedUrl').textContent = presignedUrl;
-      document.getElementById('publicUrl').textContent = publicUrl || "";
-      console.log(`Presigned URL: ${presignedUrl}`);
-      console.log(`Public URL: ${publicUrl}`);
 
       // Get the file's contents as an ArrayBuffer
       const fileContent = await file.arrayBuffer();
@@ -39,22 +54,26 @@ document.getElementById("s3UploadFileButton").addEventListener("click", async (e
         mode: "cors",
         body: fileContent,
         headers: {
-          "Content-Type": contentType,
+          "Content-Type": file.type,
         },
       });
 
       // Report on the outcome
       if (response.status >= 200 && response.status < 300) {
         msg = `${response.status} response from S3 API. Success!`;
+        if (publicUrl) {
+          document.getElementById('publicUrl').textContent = publicUrl;
+        }
+        detail = publicUrl
+            ? `Uploaded object URL: ${publicUrl}`
+            : '[S3 PutObject does not return any content]';
       } else if (response.status >= 400) {
         msg = `${response.status} error from S3 API.`;
+        detail = await response.text();
       } else {
         msg = `Unknown error.`;
+        detail = await response.text();
       }
-
-      detail = publicUrl
-          ? `Uploaded object URL: ${publicUrl}`
-          : '[S3 PutObject does not return any content]';
     }
   } catch (error) {
     console.error("Fetch threw an error:", error)
@@ -62,8 +81,6 @@ document.getElementById("s3UploadFileButton").addEventListener("click", async (e
     detail = error.stack;
   }
 
-  console.log(`Upload file result: ${msg}`);
-  console.log(`Response detail: ${detail}`);
   document.getElementById("resultMessage").textContent = msg;
   document.getElementById("response").textContent = detail;
 });
@@ -71,7 +88,7 @@ document.getElementById("s3UploadFileButton").addEventListener("click", async (e
 // When selected file changes...
 document.getElementById("uploadFileInput").addEventListener("change", async () => {
   // Clear the result, response, etc
-  document.getElementById("resultMessage").textContent ="";
+  document.getElementById("resultMessage").textContent = "";
   document.getElementById("response").textContent = "";
   document.getElementById('presignedUrl').textContent = "";
   document.getElementById('publicUrl').textContent = "";

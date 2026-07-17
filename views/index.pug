@@ -19,6 +19,9 @@ block content
 
   form
     .mb-3
+      label.form-label(for='uploadTokenInput') Upload token
+      input(type='password', autocomplete='off')#uploadTokenInput.form-control
+    .mb-3
       input(type='file')#uploadFileInput.form-control
     .mb-3
       button(type='submit')#s3UploadFileButton.btn.btn-secondary.me-1 Upload

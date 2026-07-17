@@ -2,9 +2,9 @@
 
 This example demonstrates how a web browser can upload a file directly to a Backblaze B2 Cloud Object Storage bucket with an S3-compatible presigned URL. The file contents go from the browser to B2 without passing through the Node.js server.
 
-The Node.js back end creates a presigned URL for the S3-compatible PutObject operation. The browser then uploads the selected file to that URL with `fetch()`. The B2 application key stays on the server and is never exposed to the browser.
+The Node.js back end authenticates the browser request, creates a short-lived presigned URL for the S3-compatible PutObject operation, and scopes the object key under the configured sample user. The browser then uploads the selected file to that URL with `fetch()`. The B2 application key stays on the server and is never exposed to the browser.
 
-> Note: a single presigned PutObject upload is limited to 5 GB. Split larger files into parts between 5 MB and 5 GB and use the S3 Multipart operations.
+> Note: this sample limits each upload to 10 MiB and accepts PDF, JPEG, PNG, WebP, and plain text files. Use S3 Multipart operations for larger production uploads.
 
 ---
 
@@ -27,7 +27,7 @@ The example has two components:
 
 ## Preparing Your Backblaze B2 Bucket
 
-Create a bucket and use the B2 CLI to apply custom CORS rules. The contents of the `b2CorsRules.json` file in this repo can be used as an example. Update `allowedOrigins` to the origin where you run the sample.
+Create a bucket and use the B2 CLI to apply custom CORS rules. The contents of the `b2CorsRules.json` file in this repo can be used as an example for local development on `localhost:3000` or `127.0.0.1:3000`. Update `allowedOrigins` to your production origin before deploying.
 
 If you're using bash, or a similar shell, you can use command substitution to reference the JSON file with the CORS policy:
 
@@ -47,14 +47,24 @@ B2_APPLICATION_KEY=your_application_key
 B2_BUCKET_NAME=your-bucket-name
 B2_REGION=your-region
 B2_PUBLIC_URL_BASE=https://your-bucket-name.s3.your-region.backblazeb2.com
+UPLOAD_AUTH_TOKEN=replace-with-a-long-random-token
+UPLOAD_USER_ID=sample-user
 ```
 
 `B2_REGION` is the region segment for your bucket. The sample derives the S3-compatible endpoint as `https://s3.<B2_REGION>.backblazeb2.com`.
 
 `B2_PUBLIC_URL_BASE` is used only to display the uploaded object's URL after a successful upload. Set it to the public or CDN base URL for your bucket.
 
+`UPLOAD_AUTH_TOKEN` is a sample bearer token. Enter this token in the browser UI before uploading. `UPLOAD_USER_ID` becomes part of the enforced object key prefix: `users/<UPLOAD_USER_ID>/<generated-id>/<filename>`.
+
+All required environment variables are validated at startup. If any are missing, the server exits before accepting requests.
+
+## Configuration Migration Notes
+
+Older revisions of this sample used `AWS_ENDPOINT_URL`, `AWS_REGION`, and `B2_BUCKET_ID`. This standards-aligned version does not read those names. For a rolling deployment, add the new `B2_REGION`, `B2_PUBLIC_URL_BASE`, `UPLOAD_AUTH_TOKEN`, and `UPLOAD_USER_ID` settings before deploying this version, keep the old values populated until old processes drain, then remove the old names.
+
+Custom S3 endpoint overrides are not a runtime setting in this sample. The S3-compatible endpoint is derived from `B2_REGION` as `https://s3.<B2_REGION>.backblazeb2.com`.
+
 Run the app with `DEBUG=b2-browser-upload:* npm start`.
 
-Choose a file and upload it:
-
-![upload screenshot](https://github.com/user-attachments/assets/c5fde727-af80-43b2-9c38-0bd9034b60d3)
+Choose a supported file, enter the upload token, and upload it.
