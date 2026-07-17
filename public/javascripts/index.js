@@ -6,6 +6,10 @@ document.getElementById("uploadForm").addEventListener("submit", async (event) =
   // Get the selected file
   const file = document.getElementById("uploadFileInput").files[0];
   const uploadToken = document.getElementById("uploadTokenInput").value.trim();
+  document.getElementById("resultMessage").textContent = "";
+  document.getElementById("response").textContent = "";
+  document.getElementById('presignedUrl').textContent = "";
+  document.getElementById('publicUrl').textContent = "";
 
   if (!file) {
     document.getElementById("resultMessage").textContent = "Choose a file before uploading.";
@@ -21,7 +25,6 @@ document.getElementById("uploadForm").addEventListener("submit", async (event) =
   }
 
   let msg, detail;
-  document.getElementById('publicUrl').textContent = "";
 
   try {
     // Ask the backend for a presigned URL

@@ -127,7 +127,8 @@ router.get('/presigned-url', async function(req, res, next) {
       allowedContentTypes,
     });
   } catch (error) {
-    next(error);
+    console.error('Failed to create presigned upload URL:', error);
+    res.status(500).json({ error: 'failed to create upload URL' });
   }
 });
 
