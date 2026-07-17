@@ -13,8 +13,8 @@ const reservedKeyPrefixes = new Set(['assets', 'public', 'system', 'users']);
 
 function authenticateUploadRequest(req) {
   const header = req.get('authorization') || '';
-  const match = header.match(/^Bearer\s+(.+)$/);
-  if (!match || match[1] !== config.uploadAuthToken) {
+  const prefix = 'Bearer ';
+  if (!header.startsWith(prefix) || header.slice(prefix.length) !== config.uploadAuthToken) {
     return null;
   }
 
