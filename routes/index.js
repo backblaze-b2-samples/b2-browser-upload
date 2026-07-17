@@ -1,4 +1,5 @@
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import config, { allowedContentTypes, maxUploadBytes } from '../config.js';
 import getS3UploadInfo from '../upload/getS3UploadInfo.js';
@@ -6,10 +7,17 @@ import getS3UploadInfo from '../upload/getS3UploadInfo.js';
 const router = express.Router();
 const uploadRateLimitWindowMs = 60 * 1000;
 const uploadRateLimitMax = 5;
-const uploadRateLimitBuckets = new Map();
 const maxKeyBytes = 512;
 const reservedKeyPrefixes = new Set(['assets', 'public', 'system', 'users']);
 const uploadAuthTokenDigest = createHash('sha256').update(config.uploadAuthToken).digest();
+const uploadRateLimiter = rateLimit({
+  windowMs: uploadRateLimitWindowMs,
+  limit: uploadRateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipFailedRequests: true,
+  message: { error: 'too many upload URLs requested' },
+});
 
 function isUploadTokenValid(token) {
   const tokenDigest = createHash('sha256').update(token).digest();
@@ -62,19 +70,10 @@ function parseContentLength(value) {
   return contentLength;
 }
 
-function applyUploadRateLimit(userId) {
-  const now = Date.now();
-  const cutoff = now - uploadRateLimitWindowMs;
-  const timestamps = (uploadRateLimitBuckets.get(userId) || []).filter((timestamp) => timestamp > cutoff);
-
-  if (timestamps.length >= uploadRateLimitMax) {
-    uploadRateLimitBuckets.set(userId, timestamps);
-    return false;
-  }
-
-  timestamps.push(now);
-  uploadRateLimitBuckets.set(userId, timestamps);
-  return true;
+function setNoStoreHeaders(req, res, next) {
+  res.set('Cache-Control', 'no-store');
+  res.set('Pragma', 'no-cache');
+  next();
 }
 
 /* GET home page. */
@@ -83,10 +82,7 @@ router.get('/', function(req, res, next) {
 });
 
 /* GET presigned url */
-router.get('/presigned-url', async function(req, res, next) {
-  res.set('Cache-Control', 'no-store');
-  res.set('Pragma', 'no-cache');
-
+router.get('/presigned-url', setNoStoreHeaders, uploadRateLimiter, async function(req, res, next) {
   const user = authenticateUploadRequest(req);
   if (!user) {
     res.status(401).json({ error: 'authorization is required' });
@@ -111,11 +107,6 @@ router.get('/presigned-url', async function(req, res, next) {
     objectKey = getScopedObjectKey(user.id, key);
   } catch (error) {
     res.status(400).json({ error: error.message });
-    return;
-  }
-
-  if (!applyUploadRateLimit(user.id)) {
-    res.status(429).json({ error: 'too many upload URLs requested' });
     return;
   }
 
