@@ -1,5 +1,5 @@
 import express from 'express';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import config, { allowedContentTypes, maxUploadBytes } from '../config.js';
 import getS3UploadInfo from '../upload/getS3UploadInfo.js';
 
@@ -10,11 +10,18 @@ const uploadRateLimitBuckets = new Map();
 const principalPattern = /^[A-Za-z0-9_-]{1,64}$/;
 const maxKeyBytes = 512;
 const reservedKeyPrefixes = new Set(['assets', 'public', 'system', 'users']);
+const uploadAuthTokenDigest = createHash('sha256').update(config.uploadAuthToken).digest();
+
+function isUploadTokenValid(token) {
+  const tokenDigest = createHash('sha256').update(token).digest();
+
+  return timingSafeEqual(tokenDigest, uploadAuthTokenDigest);
+}
 
 function authenticateUploadRequest(req) {
   const header = req.get('authorization') || '';
   const prefix = 'Bearer ';
-  if (!header.startsWith(prefix) || header.slice(prefix.length) !== config.uploadAuthToken) {
+  if (!header.startsWith(prefix) || !isUploadTokenValid(header.slice(prefix.length))) {
     return null;
   }
 
@@ -82,6 +89,9 @@ router.get('/', function(req, res, next) {
 
 /* GET presigned url */
 router.get('/presigned-url', async function(req, res, next) {
+  res.set('Cache-Control', 'no-store');
+  res.set('Pragma', 'no-cache');
+
   const user = authenticateUploadRequest(req);
   if (!user) {
     res.status(401).json({ error: 'authorization is required' });

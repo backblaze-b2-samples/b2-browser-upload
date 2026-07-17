@@ -108,6 +108,15 @@ test('presigned-url endpoint enforces auth, key scope, limits, and safe logs', a
             const { response, body } = await getUploadInfo(baseUrl, validParams(), null);
 
             assert.equal(response.status, 401);
+            assert.equal(response.headers.get('cache-control'), 'no-store');
+            assert.equal(body.error, 'authorization is required');
+        });
+
+        await t.test('rejects invalid upload tokens', async () => {
+            const { response, body } = await getUploadInfo(baseUrl, validParams(), 'wrong-token');
+
+            assert.equal(response.status, 401);
+            assert.equal(response.headers.get('cache-control'), 'no-store');
             assert.equal(body.error, 'authorization is required');
         });
 
@@ -155,6 +164,7 @@ test('presigned-url endpoint enforces auth, key scope, limits, and safe logs', a
             const { response, body } = await getUploadInfo(baseUrl, validParams({ key: 'photo.png' }));
 
             assert.equal(response.status, 200);
+            assert.equal(response.headers.get('cache-control'), 'no-store');
             assert.match(
                 body.objectKey,
                 /^users\/sample-user\/[0-9a-f-]{36}\/photo\.png$/,
