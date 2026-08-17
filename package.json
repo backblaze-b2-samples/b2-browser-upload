@@ -2,6 +2,9 @@
   "name": "b2-browser-upload",
   "version": "0.0.1",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node ./bin/www.js"
   },
@@ -12,12 +15,14 @@
     "debug": "~2.6.9",
     "dotenv": "^16.3.1",
     "express": "~4.22.2",
-    "http-errors": "~1.6.3",
+    "http-errors": "^2.0.0",
     "morgan": "^1.11.0",
     "node-fetch": "^3.3.2",
     "pug": "^3.0.4"
   },
   "overrides": {
-    "path-to-regexp": "0.1.13"
+    "express": {
+      "path-to-regexp": "0.1.13"
+    }
   }
 }
